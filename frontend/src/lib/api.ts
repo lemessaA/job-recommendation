@@ -1,20 +1,34 @@
 import type { RecommendationResult, UserProfile } from "./types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
 export async function fetchRecommendations(
   profile: UserProfile
 ): Promise<RecommendationResult> {
-  const res = await fetch(`${API_URL}/api/recommend`, {
+  const res = await fetch("/api/recommend", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(profile),
   });
 
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `Request failed (${res.status})`);
+    let message = `Request failed (${res.status})`;
+    try {
+      const data = await res.json();
+      message = data.detail ?? data.message ?? message;
+    } catch {
+      const text = await res.text();
+      if (text) message = text;
+    }
+    throw new Error(message);
   }
 
   return res.json();
+}
+
+export async function checkBackendHealth(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/health", { cache: "no-store" });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
